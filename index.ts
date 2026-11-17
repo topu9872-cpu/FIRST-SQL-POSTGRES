@@ -94,6 +94,33 @@ app.get("/api/v1/users/:id", async (req: Request, res: Response) => {
   }
 });
 
+app.put("/api/v1/users/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, age, password, is_Active } = req.body;
+    const result = await pool.query(
+      `
+      UPDATE users SET
+      name=COALESCE($1, name),
+      password=COALESCE($2, password),
+      age=COALESCE($3, age),
+      is_Active=COALESCE($4, is_Active)
+      WHERE id=$5 RETURNING *
+      `,
+      [name ?? null, age ?? null, password ?? null, is_Active ?? null, id],
+    );
+    console.log(result);
+    res.status(200).json({
+      message: "user updated successfully",
+      data: result.rows,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+});
+
 app.get("/", (_req: Request, res: Response) => {
   res.send("server is running");
 });
