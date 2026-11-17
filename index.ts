@@ -83,6 +83,13 @@ app.get("/api/v1/users/:id", async (req: Request, res: Response) => {
   SELECT * FROM users WHERE id=$1  `,
       [id],
     );
+
+     if (result.rowCount === 0) {
+   return res.status(404).json({
+        message: "user is not found",
+      });
+    }
+    
     res.status(200).json({
       message: "user get successfully",
       data: result.rows,
@@ -109,7 +116,12 @@ app.put("/api/v1/users/:id", async (req: Request, res: Response) => {
       `,
       [name ?? null, age ?? null, password ?? null, is_Active ?? null, id],
     );
-    console.log(result);
+     if (result.rowCount === 0) {
+   return res.status(404).json({
+        message: "user is not found",
+      });
+    }
+
     res.status(200).json({
       message: "user updated successfully",
       data: result.rows,
@@ -121,6 +133,33 @@ app.put("/api/v1/users/:id", async (req: Request, res: Response) => {
   }
 });
 
+app.delete("/api/v1/users/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+DELETE FROM users
+WHERE id=$1
+  `,
+      [id],
+    );
+
+    if (result.rowCount === 0) {
+   return res.status(404).json({
+        message: "user is not found",
+      });
+    }
+
+    res.status(200).json({
+      message: "user deleted successfully",
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+});
 app.get("/", (_req: Request, res: Response) => {
   res.send("server is running");
 });
