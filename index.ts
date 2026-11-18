@@ -4,6 +4,7 @@ import express, {
   type Response,
 } from "express";
 import { Pool } from "pg";
+import bcrypt from "bcrypt";
 require("dotenv").config();
 const app: Application = express();
 
@@ -24,6 +25,20 @@ const initDB = async () => {
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
       )`);
+
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS profile(
+  id SERIAL PRIMARY KEY,
+  userId INT UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  bio TEXT,
+  address TEXT,
+  phone VARCHAR(15),
+  gender VARCHAR(15),
+   created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+  )
+  `);
+
   console.log("database connected successfuly");
 };
 
@@ -36,13 +51,16 @@ const PORT = process.env.PORT;
 app.post("/api/v1/users", async (req: Request, res: Response) => {
   try {
     const { name, email, password, age } = req.body;
+
+    const hashPassword = await bcrypt.hash(password, 10);
+
     const result = await pool.query(
       `
   INSERT INTO users (name, email, password, age) VALUES($1,$2,$3,$4) RETURNING *
   `,
-      [name, email, password, age],
+      [name, email, hashPassword, age],
     );
-    console.log(result);
+    delete result.rows[0].password;
     res.status(201).json({
       success: true,
       message: "user created successfully",
@@ -62,7 +80,7 @@ app.get("/api/v1/users", async (req: Request, res: Response) => {
     const result = await pool.query(`
       SELECT * FROM users
       `);
-    console.log(result.rows);
+
     res.status(200).json({
       message: "all users get successfully!",
       data: result.rows,
@@ -84,12 +102,12 @@ app.get("/api/v1/users/:id", async (req: Request, res: Response) => {
       [id],
     );
 
-     if (result.rowCount === 0) {
-   return res.status(404).json({
+    if (result.rowCount === 0) {
+      return res.status(404).json({
         message: "user is not found",
       });
     }
-    
+
     res.status(200).json({
       message: "user get successfully",
       data: result.rows,
@@ -116,8 +134,8 @@ app.put("/api/v1/users/:id", async (req: Request, res: Response) => {
       `,
       [name ?? null, age ?? null, password ?? null, is_Active ?? null, id],
     );
-     if (result.rowCount === 0) {
-   return res.status(404).json({
+    if (result.rowCount === 0) {
+      return res.status(404).json({
         message: "user is not found",
       });
     }
@@ -146,7 +164,7 @@ WHERE id=$1
     );
 
     if (result.rowCount === 0) {
-   return res.status(404).json({
+      return res.status(404).json({
         message: "user is not found",
       });
     }
